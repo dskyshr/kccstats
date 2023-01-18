@@ -1,0 +1,636 @@
+---
+title: "慶應通信成績まとめ"
+author: "Author name here."
+date: "Created at `r format(Sys.time(), '%Y/%m/%d')`"
+output:
+ html_document:
+  df_print: kable
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(dplyr)
+library(stringr)
+library(ggplot2)
+library(ggrepel)
+df<-read.csv ("./kccstats.csv")
+```
+<br>
+<br>
+```{r, echo=FALSE}
+if(0){
+matrix <- group_by(df, courseDivision)
+matrix <- summarise(matrix,
+  divisionName = case_when(
+    head(courseDivision,1) == 0 ~ "認定単位", 
+    head(courseDivision,1) == 1 ~ "総合教育科目", 
+    head(courseDivision,1) == 2 ~ "専門教育科目", 
+    head(courseDivision,1) == 3 ~ "卒論・卒試"
+  ),
+  credits = sum(credits),
+  GPA = round(sum(GPA)/sum(credits),2),
+)
+# courceDivision列を削除
+matrix <- matrix[,-1]
+# 合計
+totalCredits <- sum(subset(
+  df$credits,
+  df$credits & df$GPA>=0
+))
+totalGPA <- round(sum(subset(
+  df$GPA, 
+  df$credits & df$GPA>=0
+)) / total, 2)
+totalRow <- data.frame(
+  divisionName = c("計"),
+  credits = c(totalCredits),
+  GPA = c(totalGPA)
+)
+matrix <- rbind(matrix,totalRow)
+# NA削除
+matrix <- subset(matrix, !(is.na(matrix$divisionName)))
+# 列名変更
+colnames(matrix) <- c("区分","単位数","GPA")
+matrix
+}
+```
+
+## 科目区分ごとの取得単位数とGPA
+```{r, echo=FALSE}
+# 認定
+nintei <- sum(subset(df$credits,df$courseDivision==0))
+# 総合科目
+sougou <- sum(subset(
+  df$credits,
+  df$courseDivision==1 & df$GPA>=0
+))
+sougouGPA <- round(sum(subset(
+  df$GPA, 
+  df$courseDivision==1 & df$GPA>=0
+))/sougou, 2)
+# 専門科目
+senmon <- sum(subset(
+  df$credits,
+  df$courseDivision==2 & df$GPA>=0
+))
+senmonGPA <- round(sum(subset(
+  df$GPA, 
+  df$courseDivision==2 & df$GPA>=0
+))/senmon, 2)
+# 卒論
+sotsuron <- sum(subset(
+  df$credits,
+  df$courseDivision==3 & df$GPA>=0
+))
+sotsuronGPA <- round(sum(subset(
+  df$GPA, 
+  df$courseDivision==3
+))/sotsuron, 2)
+# 必修
+hisshu  <- sum(subset(
+  df$credits,
+  df$isRequired==1 & df$GPA>=0
+))
+hisshuGPA <- round(sum(subset(
+  df$GPA, 
+  df$isRequired==1 & df$GPA>=0
+))/hisshu, 2)
+# 選択
+sentaku <- sum(subset(
+  df$credits,
+  df$isRequired==0 & df$GPA>=0
+))
+sentakuGPA <- round(sum(subset(
+  df$GPA, 
+  df$isRequired==0 & df$GPA>=0
+))/sentaku, 2)
+# テキスト
+text <- sum(subset(
+  df$credits,
+  df$isSchooling==0 & df$GPA>=0
+))
+textGPA <- round(sum(subset(
+  df$GPA, 
+  df$isSchooling==0 & df$GPA>=0
+))/text, 2)
+# スクーリング
+schooling <- sum(subset(
+  df$credits,
+  df$isSchooling==1 & df$GPA>=0
+))
+schoolingGPA <- round(sum(subset(
+  df$GPA, 
+  df$isSchooling==1 & df$GPA>=0
+))/schooling, 2)
+# 対面
+taimen <- sum(subset(
+  df$credits,
+  df$isFace2FaceExam==1 & df$GPA>=0
+))
+taimenGPA <- round(sum(subset(
+  df$GPA, 
+  df$isFace2FaceExam==1 & df$GPA>=0
+))/taimen, 2)
+# 代替
+daitai <- sum(subset(
+  df$credits,
+  df$isFace2FaceExam==0 & df$GPA>=0
+))
+daitaiGPA <- round(sum(subset(
+  df$GPA, 
+  df$isFace2FaceExam==0 & df$GPA>=0
+))/daitai, 2)
+# 合計
+total <- sum(subset(
+  df$credits,
+  df$GPA>=0
+))
+totalGPA <- round(sum(subset(
+  df$GPA, 
+  df$GPA>=0
+)) / total, 2)
+# データフレーム作成
+matrix <- data.frame(
+  "区分" = c("認定単位","総合教育科目","専門教育科目","必修科目","選択科目","テキスト","スクーリング","対面試験","代替試験","卒論・卒試","取得単位計"),
+  "単位数" = c(nintei,sougou,senmon,hisshu,sentaku,text,schooling,taimen,daitai,sotsuron,total),
+  "GPA" = c(NA,sougouGPA,senmonGPA,hisshuGPA,sentakuGPA,textGPA,schoolingGPA,taimenGPA,daitaiGPA,sotsuronGPA,totalGPA)
+)
+matrix
+```
+
+```{r, echo=FALSE}
+options(warn=-1)
+sample_data <- data.frame(
+    type = c("認定単位","総合教育科目","専門教育科目","卒論・卒試"),
+    n = c(nintei,sougou,senmon,sotsuron)
+)
+# 凡例を外にするのか内にするのかの境界。描画時にエラーになるときはここを調整してみる 
+txtBorder = 0.1
+(sample_data %>% arrange(desc(n)) %>%
+    mutate(ypos = cumsum(n) - n / 2) %>%
+    mutate(per = n / sum(n)) %>%
+    mutate(label = paste0(type, "\n", scales::percent(per, 0.1))) %>%
+    ggplot(aes(x = 0, y = n, fill = factor(rev(ypos))))
+    + geom_col(color = "white")
+    + coord_polar("y")
+    + geom_text(data = (. %>% filter(per >= txtBorder)),
+        aes(x = 0.1, y = ypos, label = label), lineheight = 0.9, size = 4)
+    + geom_text_repel(data = (. %>% filter(!(per >= txtBorder))),
+        aes(x = 0.4, y = ypos, label = label), nudge_x = 0.2, lineheight = 0.9, size = 4)
+    #+ scale_fill_manual(values = rep(alpha(c("#03af7a","#fff100","#005aff","#ff4b00","#4dc4ff","#ff8082","#f6aa00","#990099"), 0.6), 2))
+    + theme_void()
+    + theme(legend.position = "none")
+)
+```
+
+```{r, echo=FALSE}
+options(warn=-1)
+sample_data <- data.frame(
+    type = c("テキスト","スクーリング","卒論・卒試"),
+    n = c(text,schooling,sotsuron)
+)
+# 凡例を外にするのか内にするのかの境界。描画時にエラーになるときはここを調整してみる 
+txtBorder = 0.1
+(sample_data %>% arrange(desc(n)) %>%
+    mutate(ypos = cumsum(n) - n / 2) %>%
+    mutate(per = n / sum(n)) %>%
+    mutate(label = paste0(type, "\n", scales::percent(per, 0.1))) %>%
+    ggplot(aes(x = 0, y = n, fill = factor(rev(ypos))))
+    + geom_col(color = "white")
+    + coord_polar("y")
+    + geom_text(data = (. %>% filter(per >= txtBorder)),
+        aes(x = 0.1, y = ypos, label = label), lineheight = 0.9, size = 4)
+    + geom_text_repel(data = (. %>% filter(!(per >= txtBorder))),
+        aes(x = 0.4, y = ypos, label = label), nudge_x = 0.2, lineheight = 0.9, size = 4)
+    #+ scale_fill_manual(values = rep(alpha(c("#03af7a","#fff100","#005aff","#ff4b00","#4dc4ff","#ff8082","#f6aa00","#990099"), 0.6), 2))
+    + theme_void()
+    + theme(legend.position = "none")
+)
+```
+```{r, echo=FALSE}
+options(warn=-1)
+sample_data <- data.frame(
+    type = c("対面試験","代替試験"),
+    n = c(taimen,daitai)
+)
+# 凡例を外にするのか内にするのかの境界。描画時にエラーになるときはここを調整してみる 
+txtBorder = 0.3
+(sample_data %>% arrange(desc(n)) %>%
+    mutate(ypos = cumsum(n) - n / 2) %>%
+    mutate(per = n / sum(n)) %>%
+    mutate(label = paste0(type, "\n", scales::percent(per, 0.1))) %>%
+    ggplot(aes(x = 0, y = n, fill = factor(rev(ypos))))
+    + geom_col(color = "white")
+    + coord_polar("y")
+    + geom_text(data = (. %>% filter(per >= txtBorder)),
+        aes(x = 0.1, y = ypos, label = label), lineheight = 0.9, size = 4)
+    + geom_text_repel(data = (. %>% filter(!(per >= txtBorder))),
+        aes(x = 0.4, y = ypos, label = label), nudge_x = 0.2, lineheight = 0.9, size = 4)
+    #+ scale_fill_manual(values = rep(alpha(c("#03af7a","#fff100","#005aff","#ff4b00","#4dc4ff","#ff8082","#f6aa00","#990099"), 0.6), 2))
+    + theme_void()
+    + theme(legend.position = "none")
+)
+```
+
+## 科目群ごとの取得単位数とGPA(群があるもののみ)
+
+```{r, echo=FALSE}
+groupA <- sum(subset(df$credits,df$classGroup=="A" & df$GPA>=0))
+groupAGPA <- round(sum(subset(df$GPA, df$classGroup=="A" & df$GPA>=0))/groupA, 2)
+groupB <- sum(subset(df$credits,df$classGroup=="B" & df$GPA>=0))
+groupBGPA <- round(sum(subset(df$GPA, df$classGroup=="B" & df$GPA>=0))/groupB, 2)
+groupC <- sum(subset(df$credits,df$classGroup=="C" & df$GPA>=0))
+groupCGPA <- round(sum(subset(df$GPA, df$classGroup=="C" & df$GPA>=0))/groupC, 2)
+groupD <- sum(subset(df$credits,df$classGroup=="D" & df$GPA>=0))
+groupDGPA <- round(sum(subset(df$GPA, df$classGroup=="D" & df$GPA>=0))/groupD, 2)
+groupE <- sum(subset(df$credits,df$classGroup=="E" & df$GPA>=0))
+groupEGPA <- round(sum(subset(df$GPA, df$classGroup=="E" & df$GPA>=0))/groupE, 2)
+groupF <- sum(subset(df$credits,df$classGroup=="F" & df$GPA>=0))
+groupFGPA <- round(sum(subset(df$GPA, df$classGroup=="F" & df$GPA>=0))/groupF, 2)
+# データフレーム作成
+matrix <- data.frame(
+  "科目群" = c("A群","B群","C群","D群","E群","F群"),
+  "単位数" = c(groupA,groupB,groupC,groupD,groupE,groupF),
+  "GPA" = c(groupAGPA,groupBGPA,groupCGPA,groupDGPA,groupEGPA,groupFGPA)
+)
+matrix
+
+options(warn=-1)
+sample_data <- data.frame(
+    type = c("A群","B群","C群","D群","E群","F群"),
+    n = c(groupA,groupB,groupC,groupD,groupE,groupF)
+)
+# 凡例を外にするのか内にするのかの境界。描画時にエラーになるときはここを調整してみる 
+txtBorder = 0.2
+(sample_data %>% arrange(desc(n)) %>%
+    mutate(ypos = cumsum(n) - n / 2) %>%
+    mutate(per = n / sum(n)) %>%
+    mutate(label = paste0(type, "\n", scales::percent(per, 0.1))) %>%
+    ggplot(aes(x = 0, y = n, fill = factor(rev(ypos))))
+    + geom_col(color = "white")
+    + coord_polar("y")
+    + geom_text(data = (. %>% filter(per >= txtBorder)),
+        aes(x = 0.1, y = ypos, label = label), lineheight = 0.9, size = 4)
+    + geom_text_repel(data = (. %>% filter(!(per >= txtBorder))),
+        aes(x = 0.4, y = ypos, label = label), nudge_x = 0.2, lineheight = 0.9, size = 4)
+    #+ scale_fill_manual(values = rep(alpha(c("#03af7a","#fff100","#005aff","#ff4b00","#4dc4ff","#ff8082","#f6aa00","#990099"), 0.6), 2))
+    + theme_void()
+    + theme(legend.position = "none")
+)
+```
+
+所見
+ : 所見あればここに記載
+<br><br>
+
+---
+
+## スクーリングごとの取得単位数とGPA
+```{r, echo=FALSE}
+# 夏スク
+SS <- sum(subset(df$credits,df$schoolingType=="SS" & df$GPA>=0))
+SSGPA <- round(sum(subset(df$GPA, df$schoolingType=="SS" & df$GPA>=0))/SS, 2)
+# 週末スク
+WS <- sum(subset(df$credits,df$schoolingType=="WS" & df$GPA>=0))
+WSGPA <- round(sum(subset(df$GPA, df$schoolingType=="WS" & df$GPA>=0))/WS, 2)
+# 夜スク
+ES <- sum(subset(df$credits,df$schoolingType=="ES" & df$GPA>=0))
+ESGPA <- round(sum(subset(df$GPA, df$schoolingType=="ES" & df$GPA>=0))/ES, 2)
+# Eスク
+E <- sum(subset(df$credits,df$schoolingType=="E" & df$GPA>=0))
+EGPA <- round(sum(subset(df$GPA, df$schoolingType=="E" & df$GPA>=0))/E, 2)
+# データフレーム作成
+matrix <- data.frame(
+  "区分" = c("夏スク","週末スク","夜スク","Eスク"),
+  "単位数" = c(SS,WS,ES,E),
+  "GPA" = c(SSGPA,WSGPA,ESGPA,EGPA)
+)
+matrix
+```
+```{r, echo=FALSE}
+options(warn=-1)
+sample_data <- data.frame(
+    type = matrix$区分,
+    n = matrix$単位数
+)
+# 凡例を外にするのか内にするのかの境界。描画時にエラーになるときはここを調整してみる 
+txtBorder = 0.08
+(sample_data %>% arrange(desc(n)) %>%
+    mutate(ypos = cumsum(n) - n / 2) %>%
+    mutate(per = n / sum(n)) %>%
+    mutate(label = paste0(type, "\n", scales::percent(per, 0.1))) %>%
+    ggplot(aes(x = 0, y = n, fill = factor(rev(ypos))))
+    + geom_col(color = "white")
+    + coord_polar("y")
+    + geom_text(data = (. %>% filter(per >= txtBorder)),
+        aes(x = 0.1, y = ypos, label = label), lineheight = 0.9, size = 4)
+    + geom_text_repel(data = (. %>% filter(!(per >= txtBorder))),
+        aes(x = 0.4, y = ypos, label = label), nudge_x = 0.2, lineheight = 0.9, size = 4)
+    #+ scale_fill_manual(values = rep(alpha(c("#03af7a","#fff100","#005aff","#ff4b00","#4dc4ff","#ff8082","#f6aa00","#990099"), 0.6), 2))
+    + theme_void()
+    + theme(legend.position = "none")
+)
+```
+
+所見
+ : 所見あればここに記載
+<br><br>
+
+---
+
+## 成績ごとの取得単位数と比率
+```{r, echo=FALSE}
+S     <- sum(subset(df$credits, df$grade=='S'))
+#rateS <- round(S/total*100,2)
+A     <- sum(subset(df$credits, df$grade=='A'))
+#rateA <- round(A/total*100,2)
+B     <- sum(subset(df$credits, df$grade=='B'))
+#rateB <- round(B/total*100,2)
+C     <- sum(subset(df$credits, df$grade=='C'))
+#rateC <- round(C/total*100,2)
+D     <- sum(subset(df$credits, df$grade=='D'))
+#rateD <- round(D/total*100,2)
+# データフレーム作成
+matrix <- data.frame(
+  "評価"   = c("S (秀)","A (優)","B (良)","C (可)","D (不可)"),
+  "単位数" = c(S,A,B,C,D)
+  #"比率"   = c(paste(rateS,"%"),paste(rateA,"%"),paste(rateB,"%"),paste(rateC,"%"),paste(rateD,"%"))
+)
+matrix
+```
+```{r, echo=FALSE}
+options(warn=-1)
+sample_data <- data.frame(
+    type = c("S", "A", "B", "C", "D"),
+    n = c(S, A, B, C, D)
+)
+# 凡例を外にするのか内にするのかの境界。描画時にエラーになるときはここを調整してみる 
+txtBorder = 0.2
+(sample_data %>% arrange(desc(n)) %>%
+    mutate(ypos = cumsum(n) - n / 2) %>%
+    mutate(per = n / sum(n)) %>%
+    mutate(label = paste0(type, "\n", scales::percent(per, 0.1))) %>%
+    ggplot(aes(x = 0, y = n, fill = factor(rev(ypos))))
+    + geom_col(color = "white")
+    + coord_polar("y")
+    + geom_text(data = (. %>% filter(per >= txtBorder)),
+        aes(x = 0.1, y = ypos, label = label), lineheight = 0.9, size = 4)
+    + geom_text_repel(data = (. %>% filter(!(per >= txtBorder))),
+        aes(x = 0.4, y = ypos, label = label), nudge_x = 0.2, lineheight = 0.9, size = 4)
+    #+ scale_fill_manual(values = rep(alpha(c("#03af7a","#fff100","#005aff","#ff4b00","#4dc4ff","#ff8082","#f6aa00","#990099"), 0.6), 2))
+    + theme_void()
+    + theme(legend.position = "none")
+)
+```
+
+所見
+ : 所見あればここに記載
+<br><br>
+
+---
+
+## 年度ごとの取得単位数とGPA
+```{r, echo=FALSE}
+matrix <- df
+# acquireYearでグループ化
+matrix <- group_by(matrix, acquireYear)
+# 年度ごと集計
+matrix <- summarise(matrix,
+  acquireYear  = paste(head(acquireYear,1), "年目"),
+  credits      = sum(credits),
+  GPA          = round(sum(GPA)/sum(credits), 2)
+)
+# 単位がある年だけに限定
+matrix <- subset(matrix, matrix$credits>0)
+# 列名変更
+colnames(matrix) <- c("年度","単位数","GPA")
+matrix
+```
+```{r, echo=FALSE}
+options(warn=-1)
+sample_data <- data.frame(
+    type = matrix$年度,
+    n    = matrix$単位数
+)
+# 凡例を外にするのか内にするのかの境界。描画時にエラーになるときはここを調整してみる 
+txtBorder = 0.08
+(sample_data %>% arrange(desc(n)) %>%
+    mutate(ypos = cumsum(n) - n / 2) %>%
+    mutate(per = n / sum(n)) %>%
+    mutate(label = paste0(type, "\n", scales::percent(per, 0.1))) %>%
+    ggplot(aes(x = 0, y = n, fill = factor(rev(ypos))))
+    + geom_col(color = "white")
+    + coord_polar("y")
+    + geom_text(data = (. %>% filter(per >= txtBorder)),
+        aes(x = 0.1, y = ypos, label = label), lineheight = 0.9, size = 4)
+    + geom_text_repel(data = (. %>% filter(!(per >= txtBorder))),
+        aes(x = 0.4, y = ypos, label = label), nudge_x = 0.2, lineheight = 0.9, size = 4)
+    #+ scale_fill_manual(values = rep(alpha(c("#03af7a","#fff100","#005aff","#ff4b00","#4dc4ff","#ff8082","#f6aa00","#990099"), 0.6), 2))
+    + theme_void()
+    + theme(legend.position = "none")
+)
+# if(0){}でコメントアウト
+if(0){
+(sample_data %>% arrange(desc(n)) %>%
+    mutate(ypos = cumsum(n) - n / 2) %>%
+    mutate(per = n / sum(n)) %>%
+    mutate(label = paste0(type, "\n", scales::percent(per, 0.1))) %>%
+    ggplot(aes(x = 0, y = n, fill = factor(n)))
+    + geom_col()
+    + coord_polar("y")
+    + geom_text(data = (. %>% filter(per >= 0.05)),
+        aes(x = 0.1, y = ypos, label = label))
+    + geom_text_repel(
+        data = (. %>% 
+          filter(!(per >= 0.05))
+        ),
+        aes(x = 0.4, y = ypos, label = label), nudge_x = 0.2)
+    + theme_void()
+    + theme(legend.position = "none")
+)
+}
+```
+
+所見
+ : 所見あればここに記載
+<br><br>
+
+---
+
+## 取得単位数とGPAの推移
+```{r, echo=FALSE}
+options(warn=-1)
+df$acquireSemester <- as.Date(df$acquireSemester, "%Y/%m/%d")
+
+#1 y軸の幅指定
+y1.lim <- c(0, 130)  #左軸 creditsAccumulation
+y2.lim <- c(0, 4)    #右軸 temporaryGPA
+#2 気圧の数値を、上記y1.limとy2.limの幅で記載する際に、各数値を調整
+#pとlim1とlim2に対する処理を{}にかく
+variable_scaler<- function(p, lim1, lim2){
+  #lim2[1]は、軸スケールの最小値
+  to_zero  <- p-lim2[1]
+  #lim1[2]はy1.limの最大値から、lim1[1]はy1.limの最小値を引いたものがy1.lim（左軸）幅ということ。
+  y1_range <- lim1[2]-lim1[1]
+  #上記と同様y2.lim（右軸）の幅
+  y2_range <- lim2[2]-lim2[1]
+  #気圧の各数値から、最小値をひく。これに、y1幅/y2幅をかける。y2（右軸）の幅表示をy1（左軸）の幅表示に合わせる作業。
+  #左軸の最小値をゼロとするため、もし0以上であれば、その分y1の最小値を足しておく。
+  scaled   <- to_zero*y1_range/y2_range
+  from_zero <- scaled + lim1[1]     
+  return(from_zero)
+}
+
+#y2.lim(右軸)の目盛表示を調整。左軸情報から右軸を作成する。
+axis_scaler <- function(p, lim1, lim2){
+  #左軸の数値-y1（左軸）の最小値
+  to_zero <- p-lim1[1]
+  y1_range <- lim1[2]-lim1[1] 
+  y2_range <- lim2[2]-lim2[1]
+  #pは、左軸情報として最小〜最大値があるので、それぞれにy2幅/y1幅をかけることで、左軸情報が右軸情報に変える。
+  scaled <- to_zero*y2_range/y1_range
+  #右軸の最小値分足しておく。
+  from_zero <- scaled + lim2[1]
+  return(from_zero)
+}
+ggplot()+
+geom_line(
+  data=df,
+  aes(
+    x=acquireSemester, 
+    y=creditsAccumulation,
+    color="累積単位数"
+  ),
+  size=1
+)+
+geom_line(
+  data=df,
+  aes(
+    x=acquireSemester,
+    y=variable_scaler(
+      temporaryGPA,
+      y1.lim,
+      y2.lim
+    ),
+    color="GPA"
+  ),
+  size=1
+)+
+scale_y_continuous(
+   limit=y1.lim,
+   sec.axis=sec_axis(
+     ~(axis_scaler(., y1.lim, y2.lim)),
+     name="GPA"
+   )
+)+
+labs(x="年/月", y="単位数", color="凡例")
+
+```
+
+所見
+ : 所見あればここに記載
+<br><br>
+
+---
+
+## 科目試験不合格回数ランキング
+```{r, echo=FALSE}
+ranking <- subset(df, examFaultTimes>0, select=c("className","examFaultTimes"))
+# 順位を列名rankとして追加
+ranking$rank <- rank(-ranking$examFaultTimes, na.last=NA, ties.method = "min")
+# rankの昇順にソート
+ranking <- ranking[order(ranking$rank),]
+# 列名変更
+colnames(ranking) <- c("科目名","不合格回数","順位")
+# 列入れ替え
+ranking <- ranking[,c(3,1,2)]
+# 行番号削除
+rownames(ranking) <- NULL
+ranking
+```
+
+所見
+ : 所見あればここに記載
+ <br><br>
+
+---
+
+## レポート不合格回数ランキング
+```{r, echo=FALSE}
+df2<-read.csv ("./kccstats_repo.csv")
+
+ranking <- df2
+# reportIDでグループ化
+ranking <-  group_by(ranking, reportID)
+# 同じreportIDの行数-1が不合格回数, それ以外の列は一番上のデータをそのまま表示
+ranking <- summarise(ranking,
+  reportName=head(reportName,1),
+  reportDetail=head(reportDetail,1),
+  faultTimes=n()-1
+)
+# 行と列を限定
+ranking <- subset(ranking, ranking$faultTimes>0, select=c("reportName","reportDetail","faultTimes"))
+# 順位を列名rankとして追加
+ranking$rank <- rank(-ranking$faultTimes, na.last=NA, ties.method = "min")
+# rankの昇順にソート
+ranking <- ranking[order(ranking$rank),]
+# 列名変更
+colnames(ranking) <- c("科目名","分冊","不合格回数","順位")
+# 列入れ替え
+ranking <- ranking[,c(4,1,2,3)]
+# 行番号削除
+rownames(ranking) <- NULL
+ranking
+```
+
+所見
+ : 所見あればここに記載
+ <br><br>
+
+---
+
+## レポート返却日数ランキング
+```{r, echo=FALSE}
+# 日数を計算して追加
+source <- mutate(df2,daysToReturn=(as.Date(returnDate)-as.Date(receiveDate)))
+# 列を限定
+source <- subset(source, daysToReturn>0, select=c("reportName","reportDetail","submitTime","daysToReturn","result"))
+```
+### BEST5
+```{r, echo=FALSE}
+ranking <-source
+# 順位を列名rankとして追加
+ranking$rank <- rank(ranking$daysToReturn, na.last=NA, ties.method = "min")
+# rankの昇順にソート
+ranking <- ranking[order(ranking$rank),]
+# 上位5位に限定
+ranking <- subset(ranking, rank<=5)
+# 列名変更
+colnames(ranking) <- c("科目名","分冊","提出回","返却日数","結果","順位")
+# 列入れ替え
+ranking <- ranking[,c(6,1,2,3,4,5)]
+# 行番号削除
+rownames(ranking) <- NULL
+#select.df2[c(1, 2, 3),]
+ranking
+```
+### WORST5
+```{r, echo=FALSE}
+ranking <-source
+# 順位を列名rankとして追加
+ranking$rank <- rank(-ranking$daysToReturn, na.last=NA, ties.method = "min")
+# rankの昇順にソート
+ranking <- ranking[order(ranking$rank),]
+# 上位5位に限定
+ranking <- subset(ranking, rank<=5)
+# 列名変更
+colnames(ranking) <- c("科目名","分冊","提出回","返却日数","結果","順位")
+# 列入れ替え
+ranking <- ranking[,c(6,1,2,3,4,5)]
+# 行番号削除
+rownames(ranking) <- NULL
+ranking
+```
+
+所見
+ : 所見あればここに記載
