@@ -4,6 +4,8 @@
 
 # DEMO
 
+https://htmlpreview.github.io/?https://github.com/dskyshr/kccstats/blob/master/kccstats.html
+
 # Features
  
 # Requirement
