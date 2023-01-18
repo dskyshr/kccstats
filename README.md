@@ -4,6 +4,8 @@
 
 # DEMO
 
+出力されるMarkdownのサンプルは以下を参照。
+※作者の実際の成績ではありません
 https://dskyshr.github.io/kccstats/kccstats.html
 
 # Features
