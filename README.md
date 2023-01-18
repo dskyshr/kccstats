@@ -4,7 +4,7 @@
 
 # DEMO
 
-https://htmlpreview.github.io/?https://github.com/dskyshr/kccstats/blob/master/kccstats.html
+https://dskyshr.github.io/kccstats/kccstats.html
 
 # Features
  
