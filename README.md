@@ -36,16 +36,17 @@ kccstats.csv
 * creditsAccumulation : 累積単位数。"acquireSemester"の早い順に並べて、その時点での累積単位を入力。
 * grade	: 成績。S,A,B,C,D のいずれかを入力。
 * gradePoints : Sは4, Aは3, Bは2, Cは1, Dは0 を入力。
-* GPA : gredePoints/creditの値を入力
+* GPA : gredePoints/creditの値を入力。通常は小数点第3位を四捨五入。
 * GPAaccumulation :  累積gradePoints。"acquireSemester"の早い順に並べて、その時点での累積gradePointsを入力。
 * temporaryGPA :  一時GPA。"acquireSemester"の早い順に並べて、その時点でのGPAを入力。
-* courseDivision : 科目区分。認定単位は0, 総合科目は1, 専門科目は2, 卒論・卒試は3。
+* courseDivision : 科目区分。認定単位は0, 総合科目は1, 専門科目は2, 卒論は3。
 * acquireSemester	: 単位取得年月。YYYY/MM で入力。
 * acquireYear : 単位取得年度。1年目なら1, 2年目なら2, ...。
 * examFaultTimes : 科目試験不合格回数。一発合格なら0。
 * isFace2FaceExam : 対面試験を実施した科目は1, 代替試験を実施した科目は0。サンプルではオフラインスクーリングは1,オンラインスクーリングは0にしてます。
 * isSchooling : スクーリングは1, テキスト科目は0。
-* schoolingType : スクーリングのタイプ。夏スクはSS, 週末スクはWS, 夜スクはES, EスクはE。
+* schoolingType : スクーリングのタイプ。夏スクはSS, 週末スクはWS, 夜スクはES, EスクはE。放送英語はEに含めてください。  
+※なお、卒試は評価が出ますが成績は卒論のみで評価されるので、卒論の単位を8にしてgrade,gradePointsにに卒論単独の評価を入力してください。
 
 kccstats_repo.csv
 * reportID : レポートの番号。一意であればなんでもOK。ただし分冊があるレポートは分冊ごとに番号をつけてください。
