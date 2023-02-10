@@ -25,7 +25,7 @@ matrix <- summarise(matrix,
     head(courseDivision,1) == 0 ~ "認定単位", 
     head(courseDivision,1) == 1 ~ "総合教育科目", 
     head(courseDivision,1) == 2 ~ "専門教育科目", 
-    head(courseDivision,1) == 3 ~ "卒論・卒試"
+    head(courseDivision,1) == 3 ~ "卒論"
   ),
   credits = sum(credits),
   GPA = round(sum(GPA)/sum(credits),2),
@@ -151,7 +151,7 @@ totalGPA <- round(sum(subset(
 )) / total, 2)
 # データフレーム作成
 matrix <- data.frame(
-  "区分" = c("認定単位","総合教育科目","専門教育科目","必修科目","選択科目","テキスト","スクーリング","対面試験","代替試験","卒論・卒試","取得単位計"),
+  "区分" = c("認定単位","総合教育科目","専門教育科目","必修科目","選択科目","テキスト","スクーリング","対面試験","代替試験","卒論","取得単位計"),
   "単位数" = c(nintei,sougou,senmon,hisshu,sentaku,text,schooling,taimen,daitai,sotsuron,total),
   "GPA" = c(NA,sougouGPA,senmonGPA,hisshuGPA,sentakuGPA,textGPA,schoolingGPA,taimenGPA,daitaiGPA,sotsuronGPA,totalGPA)
 )
@@ -161,7 +161,7 @@ matrix
 ```{r, echo=FALSE}
 options(warn=-1)
 sample_data <- data.frame(
-    type = c("認定単位","総合教育科目","専門教育科目","卒論・卒試"),
+    type = c("認定単位","総合教育科目","専門教育科目","卒論"),
     n = c(nintei,sougou,senmon,sotsuron)
 )
 # 凡例を外にするのか内にするのかの境界。描画時にエラーになるときはここを調整してみる 
@@ -186,7 +186,7 @@ txtBorder = 0.1
 ```{r, echo=FALSE}
 options(warn=-1)
 sample_data <- data.frame(
-    type = c("テキスト","スクーリング","卒論・卒試"),
+    type = c("テキスト","スクーリング","卒論"),
     n = c(text,schooling,sotsuron)
 )
 # 凡例を外にするのか内にするのかの境界。描画時にエラーになるときはここを調整してみる 
@@ -393,6 +393,7 @@ txtBorder = 0.2
 ```{r, echo=FALSE}
 matrix <- df
 # acquireYearでグループ化
+matrix <- subset(matrix, !(is.na(matrix$acquireYear)))
 matrix <- group_by(matrix, acquireYear)
 # 年度ごと集計
 matrix <- summarise(matrix,
