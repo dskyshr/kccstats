@@ -635,3 +635,8 @@ ranking
 
 所見
  : 所見あればここに記載
+
+
+<div style="text-align: right;">
+Powered by <a href="https://github.com/dskyshr/kccstats" target="_blank">kccStats</a>
+</div>
